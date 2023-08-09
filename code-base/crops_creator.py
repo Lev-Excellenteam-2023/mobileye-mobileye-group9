@@ -16,31 +16,39 @@ def make_crop(*args, **kwargs):
     'y0'  The smaller y value (the lower corner)
     'y1'  The bigger y value (the higher corner)
     """
-    height=108
-    width=44
+    height_image_size=112
+    width_image_size=44
     x=args[0]
     y=args[1]
     c=args[2]
     index=args[3]
     gtim_path=args[4]
-    x0=x+0.5*width
-    x1 = x - 0.5 * width
-    if c == GRN:
-        y1 = y + 0.8 * height
-        y0= y - 0.2 * height
+    radius = args[5]
+    height=radius*6
+    width=radius*2
+    side_h=0.1*height
+    side_w=0.1*width
+    x0=x+radius+side_w
+    x1 = x - radius-side_w
     if c == RED:
-        y1 = y + 0.2 * height
-        y0 = y - 0.8 * height
+        y1 = y + 5*radius+3*side_h
+        y0= y - radius-side_h
+    if c == GRN:
+        y1 = y +radius+side_h
+        y0 = y - 5*radius-3*side_h
 
     # Load the image from the specified path using the index
     image = Image.open(gtim_path)
 
     # Crop the image based on the specified coordinates
     cropped_image = image.crop((x1, y0, x0, y1))  # Note the order of coordinates
-    #cropped_image = image[y1:y2, x1:x2]
-    # Save the cropped image to a file (you can adjust the filename format as needed)
-    crop_path: str = 'C:/Users/user/Desktop/part1/mobileye-part_1/code/TFL_Detection_Pre/data/crops/my_crop_unique_name'+str(index)+'.png'
-    cropped_image.save(CROP_DIR / crop_path)
+    # Resize the cropped image using a valid resampling filter (e.g., BILINEAR)
+    resampled_image = cropped_image.resize((width_image_size, height_image_size), Image.BILINEAR)
+
+    # Save the resized image to a file
+    crop_path: str = 'C:/Users/user/Desktop/part1/mobileye-part_1/code/TFL_Detection_Pre/data/crops/my_crop_unique_name' + str(
+        index) + '.png'
+    resampled_image.save(CROP_DIR / crop_path)
 
     return x0, x1, y0, y1, cropped_image
 
@@ -97,7 +105,7 @@ def create_crops(df: DataFrame) -> DataFrame:
 
         # example code:
         # ******* rewrite ONLY FROM HERE *******
-        x0, x1, y0, y1, crop = make_crop(df[X][index], df[Y][index], df[COLOR][index], index, df[IMAG_PATH][index])
+        x0, x1, y0, y1, crop = make_crop(df[X][index], df[Y][index],df[COLOR][index],index,df[IMAG_PATH][index],df[RADIUS][index])
 
         result_template[X0], result_template[X1], result_template[Y0], result_template[Y1] = x0, x1, y0, y1
         crop_path: str = '/data/crops/my_crop_unique_name.probably_containing_the original_image_name+somthing_unique'
