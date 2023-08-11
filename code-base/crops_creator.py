@@ -3,7 +3,7 @@ from typing import Dict, Any
 
 from PIL import Image
 from consts import CROP_DIR, CROP_RESULT, SEQ, IS_TRUE, IGNOR, CROP_PATH, X0, X1, Y0, Y1, COLOR, SEQ_IMAG, COL, X, Y, \
-    GTIM_PATH, JSON_PATH, GRN, RED, IMAG_PATH
+    GTIM_PATH, JSON_PATH, GRN, RED, IMAG_PATH, RADIUS, ZOOM, NAME
 
 from pandas import DataFrame
 
@@ -16,14 +16,13 @@ def make_crop(*args, **kwargs):
     'y0'  The smaller y value (the lower corner)
     'y1'  The bigger y value (the higher corner)
     """
-    height_image_size=112
-    width_image_size=44
+
     x=args[0]
     y=args[1]
     c=args[2]
-    index=args[3]
-    gtim_path=args[4]
-    radius = args[5]
+    imag_path=args[3]
+    radius = args[4]
+    ratio=args[5]
     height=radius*6
     width=radius*2
     side_h=0.1*height
@@ -37,19 +36,21 @@ def make_crop(*args, **kwargs):
         y1 = y +radius+side_h
         y0 = y - 5*radius-3*side_h
 
+    crop_height = abs(y0 - y1)
+    crop_width = abs(x0 - x1)
+    crop_width_r = crop_height * 1 / (ratio)
+    while crop_width_r < crop_width:
+        crop_height = crop_height + 1
+        crop_width_r = crop_height * 1 / (ratio)
+    y0=y1-crop_height
+    x1=x1-crop_width_r/2
+    x0=x0+crop_width_r/2
+
     # Load the image from the specified path using the index
-    image = Image.open(gtim_path)
+    image = Image.open(imag_path)
 
     # Crop the image based on the specified coordinates
-    cropped_image = image.crop((x1, y0, x0, y1))  # Note the order of coordinates
-    # Resize the cropped image using a valid resampling filter (e.g., BILINEAR)
-    resampled_image = cropped_image.resize((width_image_size, height_image_size), Image.BILINEAR)
-
-    # Save the resized image to a file
-    crop_path: str = 'C:/Users/user/Desktop/part1/mobileye-part_1/code/TFL_Detection_Pre/data/crops/my_crop_unique_name' + str(
-        index) + '.png'
-    resampled_image.save(CROP_DIR / crop_path)
-
+    cropped_image = image.crop((x1, y0, x0, y1))
     return x0, x1, y0, y1, cropped_image
 
 def check_crop(*args, **kwargs):
@@ -102,14 +103,16 @@ def create_crops(df: DataFrame) -> DataFrame:
     for index, row in df.iterrows():
         result_template[SEQ] = row[SEQ_IMAG]
         result_template[COL] = row[COLOR]
-
-        # example code:
-        # ******* rewrite ONLY FROM HERE *******
-        x0, x1, y0, y1, crop = make_crop(df[X][index], df[Y][index],df[COLOR][index],index,df[IMAG_PATH][index],df[RADIUS][index])
-
-        result_template[X0], result_template[X1], result_template[Y0], result_template[Y1] = x0, x1, y0, y1
-        crop_path: str = '/data/crops/my_crop_unique_name.probably_containing_the original_image_name+somthing_unique'
-        # crop.save(CROP_DIR / crop_path)
+        height_image_size = 112
+        width_image_size = 44
+        ratio = height_image_size / width_image_size
+        x0, x1, y0, y1, crop = make_crop(df[X][index], df[Y][index],df[COLOR][index],df[IMAG_PATH][index],df[RADIUS][index],ratio)
+        crop_height = abs(y0 - y1)
+        zoom=height_image_size/crop_height
+        result_template[X0], result_template[X1], result_template[Y0], result_template[Y1],result_template[ZOOM] = x0, x1, y0, y1,zoom
+        resampled_image = crop.resize((width_image_size, height_image_size), Image.BILINEAR)
+        crop_path: str = '/' + df[NAME][index] +'_'+ str(index) + '.png'
+        resampled_image.save(str(CROP_DIR) + crop_path)
         result_template[CROP_PATH] = crop_path
         result_template[IS_TRUE], result_template[IGNOR] = check_crop(df[GTIM_PATH][index],
                                                                       crop, x0, x1, y0, y1,df[JSON_PATH][index],
