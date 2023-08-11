@@ -99,7 +99,7 @@ def create_crops(df: DataFrame) -> DataFrame:
 
     # A dict containing the row you want to insert into the result DataFrame.
     result_template: Dict[Any] = {SEQ: '', IS_TRUE: '', IGNOR: '', CROP_PATH: '', X0: '', X1: '', Y0: '', Y1: '',
-                                  COL: ''}
+                                  COL: '',ZOOM:''}
     for index, row in df.iterrows():
         result_template[SEQ] = row[SEQ_IMAG]
         result_template[COL] = row[COLOR]
